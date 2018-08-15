@@ -4,14 +4,14 @@ jobs:
     docker:
       - image: circleci/python:2.7
 
-    working_directory: ~/python_cowbull_webapp
+    working_directory: ~/python_cowbull_webapp-image
 
     steps:
       - checkout
 
       - restore_cache:
           keys:
-          - v2-dependencies-{{ checksum "requirements.txt" }}
+          - v2-dependencies-{{ checksum "cowbull-webserver.json" }}
           # fallback to using the latest cache if no exact match is found
           - v2-dependencies-
 
@@ -27,8 +27,7 @@ jobs:
       - run:
           name: build gold image in Azure
           command: |
-            cd packer-image
-            packer build -force cowbull-webserver.json
+            packer build cowbull-webserver.json
           no_output_timeout: 60m
 
       - save_cache:
