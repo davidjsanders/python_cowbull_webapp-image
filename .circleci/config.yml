@@ -1,0 +1,45 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:2.7
+
+    working_directory: ~/python_cowbull_webapp
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+          - v2-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v2-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            curl -o packer.zip https://releases.hashicorp.com/packer/1.2.5/packer_1.2.5_linux_amd64.zip
+            unzip packer.zip
+            sudo mv packer /usr/local/bin/
+            rm -f packer.zip
+            packer --help
+
+      - run:
+          name: build gold image in Azure
+          command: |
+            cd packer-image
+            packer build -force cowbull-webserver.json
+          no_output_timeout: 60m
+
+      - save_cache:
+          key: v2-dependencies-{{ checksum "requirements.txt" }}
+          paths:
+            - ~/.m2
+
+      - store_artifacts:
+          path: /tmp/unittest-report.log
+          destination: unittest-report
+
+      - store_artifacts:
+          path: /tmp/dockertest-report.log
+          destination: dockertest-report

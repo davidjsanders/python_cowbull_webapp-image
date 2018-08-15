@@ -1,0 +1,77 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:2.7
+      - image: dsanderscan/cowbull
+
+    working_directory: ~/python_cowbull_webapp
+
+    environment:
+      - COWBULL_SERVER='cowbull'
+      - COWBULL_PORT=8080
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+          - v2-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v2-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            virtualenv venv
+            . venv/bin/activate
+            pip2 install -r requirements.txt
+            curl -o packer.zip https://releases.hashicorp.com/packer/1.2.5/packer_1.2.5_linux_amd64.zip
+            unzip packer.zip
+            sudo mv packer /usr/local/bin/
+            packer --help
+
+      - setup_remote_docker
+
+      - run:
+          name: build and test docker image
+          command: |
+            docker login --username=$doclog --password=$docpass
+            docker build -f vendor/docker/Dockerfile -t dsanderscan/$IMAGE_NAME:$MAJOR_VERSION"."$MINOR_VERSION"."$CIRCLE_BUILD_NUM .
+            set -o pipefail
+            docker run --name cowbull -d dsanderscan/cowbull
+            docker run --name test2 --link cowbull \
+              -v /tmp:/tmp \
+              -e COWBULL_SERVER='cowbull' \
+              -e COWBULL_PORT=8080 \
+              -p 8080:8080 \
+              -d dsanderscan/$IMAGE_NAME:$MAJOR_VERSION"."$MINOR_VERSION"."$CIRCLE_BUILD_NUM
+            curl http://localhost:8080/health > >(tee -a /tmp/dockertest-report.log >&2)
+            echo "Test results status: $?"
+
+      - run:
+          name: push docker image
+          command: |
+            docker tag dsanderscan/$IMAGE_NAME:$MAJOR_VERSION"."$MINOR_VERSION"."$CIRCLE_BUILD_NUM dsanderscan/$IMAGE_NAME:latest
+            docker push dsanderscan/$IMAGE_NAME:$MAJOR_VERSION"."$MINOR_VERSION"."$CIRCLE_BUILD_NUM
+            docker push dsanderscan/$IMAGE_NAME:latest
+
+      - run:
+          name: build gold image in Azure
+          command: |
+            cd packer-image
+            packer build -force cowbull-webserver.json
+          no_output_timeout: 60m
+
+      - save_cache:
+          key: v2-dependencies-{{ checksum "requirements.txt" }}
+          paths:
+            - ~/.m2
+
+      - store_artifacts:
+          path: /tmp/unittest-report.log
+          destination: unittest-report
+
+      - store_artifacts:
+          path: /tmp/dockertest-report.log
+          destination: dockertest-report
