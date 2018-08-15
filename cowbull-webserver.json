@@ -5,6 +5,7 @@
     "tenant_id": "{{env `tenant_id`}}",
     "subscription_id": "{{env `subscription_id`}}",
     "IMAGE_RG": "{{env `IMAGE_RG`}}",
+    "IMAGE_NAME": "{{env `AZURE_IMAGE_NAME`}}",
     "MAJOR_VERSION": "{{env `MAJOR_VERSION`}}",
     "MINOR_VERSION": "{{env `MINOR_VERSION`}}",
     "CIRCLE_BUILD_NUM": "{{env `CIRCLE_BUILD_NUM`}}"
@@ -18,7 +19,7 @@
     "subscription_id": "{{user `subscription_id`}}",
 
     "managed_image_resource_group_name": "{{user `IMAGE_RG`}}",
-    "managed_image_name": "cowbull-webserver-ubuntu-{{user `MAJOR_VERSION`}}-{{user `MINOR_VERSION`}}-{{user `CIRCLE_BUILD_NUM`}}",
+    "managed_image_name": "{{user `IMAGE_NAME`}}-{{user `MAJOR_VERSION`}}-{{user `MINOR_VERSION`}}-{{user `CIRCLE_BUILD_NUM`}}",
 
     "os_type": "Linux",
     "image_publisher": "Canonical",
